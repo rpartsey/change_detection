@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader as TorchDataLoader
 
 from utils.image import read_tif
 
@@ -41,6 +41,27 @@ class PlanetClassificationDataset(Dataset):
     def __len__(self):
         return len(self.df)
 
+    @classmethod
+    def from_config(cls, config):
+        return cls(
+            csv_file=config.csv_path,
+            image_transforms=config.image_transforms,
+            label_transforms=config.label_transforms,
+            augmentations=config.augmentations
+        )
+
 
 class PlanetClassificationTestDataset:
     pass
+
+
+class DataLoader(TorchDataLoader):
+    @classmethod
+    def from_config(cls, dataset, config):
+        return cls(
+            dataset=dataset,
+            batch_size=config.batch_size,
+            shuffle=config.shuffle,
+            sampler=config.sampler,
+            num_workers=config.num_workers
+        )
