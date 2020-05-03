@@ -8,17 +8,17 @@ class BinaryClassificationMeter:
         self.total_count = torch.tensor(0)
 
     def update(self, true, pred):
-        tp = ((true == 1) & (pred == 1)).sum()
-        fn = ((true == 1) & (pred == 0)).sum()
-        tn = ((true == 0) & (pred == 0)).sum()
-        fp = ((true == 0) & (pred == 1)).sum()
+        tp = ((pred == 1) & (true == 1)).sum()
+        fp = ((pred == 1) & (true == 0)).sum()
+        fn = ((pred == 0) & (true == 1)).sum()
+        tn = ((pred == 0) & (true == 0)).sum()
 
-        self.conf_mat += torch.stack([tp, fn, tn, fp]).reshape(2, 2)
-        self.running_corrects += (tp + fp)
+        self.conf_mat += torch.stack([tp, fp, fn, tn]).reshape(2, 2)
+        self.running_corrects += (tp + tn)
         self.total_count += true.size(0)  # batch size
 
     def get_metrics(self):
-        tp, fn, tn, fp = self.conf_mat.flatten()
+        tp, fp, fn, tn = self.conf_mat.flatten()
 
         accuracy = self.running_corrects / self.total_count
         precision = tp / (tp + fp)

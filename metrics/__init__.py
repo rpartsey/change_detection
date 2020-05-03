@@ -1,1 +1,2 @@
 from .binary_classification_meter import BinaryClassificationMeter
+from .binary_segmentation_meter import AverageMetricsMeter

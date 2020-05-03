@@ -1,1 +1,1 @@
-from .augs import StandardAugmentation
+from .augs import StandardAugmentation, SmartCrop, CenterCrop
