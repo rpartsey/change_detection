@@ -1,23 +1,19 @@
-"""
-CamVid segmentation experiment.
-
-This code is written purely for testing purposes.
-"""
-
+import os
+import torch
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.tensorboard import SummaryWriter
-import configs.camvid as experiment_config
-from datasets.camvid import CamVidDataset, DataLoader
+import configs.ba.event.baseline as experiment_config
+from datasets.planet import PlanetSegmentationDataset, DataLoader
 from experiments.binary_segmentation import train_epoch, calculate_metrics, print_metrics, write_metrics
-from utils.general import set_random_seed, create_experiment_log_dir
+from utils.general import create_experiment_log_dir
 
 
 def run_experiment(config):
-    set_random_seed(config.ExperimentConfig.random_state)
     logdir_path = create_experiment_log_dir(config.ExperimentConfig.directory)
     writer = SummaryWriter(logdir_path)
 
-    train_dataset = CamVidDataset.from_config(config.TrainDatasetConfig)
-    val_dataset = CamVidDataset.from_config(config.ValidationDatasetConfig)
+    train_dataset = PlanetSegmentationDataset.from_config(config.TrainDatasetConfig)
+    val_dataset = PlanetSegmentationDataset.from_config(config.ValidationDatasetConfig)
 
     train_loader = DataLoader.from_config(train_dataset, config.TrainDataloaderConfig)
     val_loader = DataLoader.from_config(val_dataset, config.ValDataloaderConfig)
@@ -29,8 +25,10 @@ def run_experiment(config):
     criterion = config.ExperimentConfig.criterion
     optimizer = config.ExperimentConfig.optimizer
     metrics = config.ExperimentConfig.metrics
+    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=5, verbose=True)
 
     # training & validation
+    best_iou = 0
     num_epochs = config.ExperimentConfig.num_epochs
     for epoch in range(num_epochs):
         print('\nEpoch {}'.format(epoch))
@@ -43,6 +41,16 @@ def run_experiment(config):
         val_metrics.update(phase='Validation', loss=val_loss)
         print_metrics(val_metrics)
         write_metrics(writer, val_metrics, epoch)
+
+        if scheduler:
+            scheduler.step(val_metrics['loss'])
+
+        if val_metrics['iou_score'] > best_iou:
+            best_iou = val_metrics['iou_score']
+            torch.save(model, os.path.join(logdir_path, 'best_model.pth'))
+            print('Best IoU updated!')
+
+    print(f"\n{' ' * 10}{'*' * 10} Best IoU: {best_iou} {' ' * 10}{'*' * 10}")
 
 
 run_experiment(experiment_config)

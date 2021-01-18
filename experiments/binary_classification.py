@@ -35,7 +35,7 @@ def calculate_metrics(model, criterion, loader, device, threshold=0.5):
     return epoch_loss, metrics
 
 
-def train_epoch(model, criterion, optimizer, loader, device, scheduler=None, threshold=0.5):
+def train_epoch(model, criterion, optimizer, loader, device, threshold=0.5):
     model.train()
 
     running_loss = torch.tensor(0.0, dtype=torch.double)
@@ -54,9 +54,6 @@ def train_epoch(model, criterion, optimizer, loader, device, scheduler=None, thr
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
-
-            if scheduler:
-                scheduler.step()
 
             batch_loss = loss.item() * images.size(0)
             running_loss += batch_loss

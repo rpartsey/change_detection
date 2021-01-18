@@ -1,16 +1,17 @@
 """
 Burned areas classification experiment.
 """
-
+import os
+import torch
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.tensorboard import SummaryWriter
-import configs.ba_classification as experiment_config
-from datasets.planet import PlanetClassificationDataset, PlanetClassificationDatasetV2, DataLoader
+import configs.ba_classification_efficientnet as experiment_config
+from datasets.planet import PlanetClassificationDatasetV2, DataLoader
 from experiments.binary_classification import train_epoch, calculate_metrics, print_metrics, write_metrics
-from utils.general import set_random_seed, create_experiment_log_dir
+from utils.general import create_experiment_log_dir
 
 
 def run_experiment(config):
-    set_random_seed(config.ExperimentConfig.random_state)
     logdir_path = create_experiment_log_dir(config.ExperimentConfig.directory)
     writer = SummaryWriter(logdir_path)
 
@@ -22,12 +23,15 @@ def run_experiment(config):
 
     device = config.ExperimentConfig.device
     model = config.ExperimentConfig.model
+    print(device)
     model.to(device)
 
     criterion = config.ExperimentConfig.criterion
     optimizer = config.ExperimentConfig.optimizer
+    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=8, verbose=True, threshold=1e-3) # ReduceLROnPlateau(optimizer, 'min', patience=8, verbose=True, threshold=1e-4)
 
     # training & validation
+    best_acc = 0
     num_epochs = config.ExperimentConfig.num_epochs
     for epoch in range(num_epochs):
         print('\nEpoch {}'.format(epoch))
@@ -40,6 +44,17 @@ def run_experiment(config):
         val_metrics.update(phase='Validation', loss=val_loss)
         print_metrics(val_metrics)
         write_metrics(writer, val_metrics, epoch)
+
+        if scheduler:
+            scheduler.step(val_metrics['loss'])
+
+        if best_acc < val_metrics['accuracy']:
+            state_dict = {'model': model.state_dict()}
+            path = os.path.join(logdir_path, 'best.h5')
+            torch.save(state_dict, path)
+
+            best_acc = val_metrics['accuracy']
+            print('Best accuracy updated!')
 
 
 run_experiment(experiment_config)

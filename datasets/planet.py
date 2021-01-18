@@ -74,13 +74,17 @@ class PlanetClassificationDatasetV2(PlanetClassificationDataset):
         if self.label_transforms:
             label = self.label_transforms(label)
 
-        meta = {}  # meta data
+        meta = {
+            'image_path': image_path
+        }  # meta data
 
         return image, label, meta
 
 
 class PlanetSegmentationDataset(Dataset):
     """Planet segmentation dataset."""
+    IMAGE_LOCATION_KEY = 'image_path'
+    MASK_LOCATION_KEY = 'mask_path'
 
     def __init__(self, csv_file, **kwargs):
         """
@@ -95,8 +99,8 @@ class PlanetSegmentationDataset(Dataset):
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
 
-        image = read_tif(row['image_path']).transpose((1, 2, 0))
-        mask = read_tif(row['mask_path']).transpose((1, 2, 0))
+        image = self._load_image(row).transpose((1, 2, 0))
+        mask = self._load_mask(row).transpose((1, 2, 0))
 
         if self.augmentations:
             image, mask = self.augmentations(image, mask)
@@ -114,6 +118,12 @@ class PlanetSegmentationDataset(Dataset):
     def __len__(self):
         return len(self.df)
 
+    def _load_image(self, row):
+        return read_tif(row[self.IMAGE_LOCATION_KEY])
+
+    def _load_mask(self, row):
+        return read_tif(row[self.MASK_LOCATION_KEY])
+
     @classmethod
     def from_config(cls, config):
         return cls(
@@ -122,6 +132,19 @@ class PlanetSegmentationDataset(Dataset):
             mask_transforms=config.mask_transforms,
             augmentations=config.augmentations
         )
+
+
+class PlanetSegmentationDatasetV2(PlanetSegmentationDataset):
+    """Planet pre-event - event segmentation dataset."""
+
+    def __init__(self, csv_file, **kwargs):
+        super().__init__(csv_file, **kwargs)
+
+    def _load_image(self, row):
+        return np.vstack([
+            read_tif(row['pre_event_image_path']),
+            read_tif(row['image_path'])
+        ])
 
 
 class PlanetClassificationTestDataset:

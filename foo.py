@@ -1,13 +1,11 @@
-"""
-Burned areas segmentation experiment.
-"""
 import os
+
 import torch
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.tensorboard import SummaryWriter
-import configs.ba_segmentation_pretrained as experiment_config
-from datasets.planet import PlanetSegmentationDataset, DataLoader
-from experiments.binary_segmentation import train_epoch, calculate_metrics, print_metrics, write_metrics
+
+from datasets.planet import PlanetSegmentationDatasetV2, DataLoader
+from experiments.binary_segmentation import train_epoch, print_metrics, write_metrics, calculate_metrics
 from utils.general import create_experiment_log_dir
 
 
@@ -15,8 +13,8 @@ def run_experiment(config):
     logdir_path = create_experiment_log_dir(config.ExperimentConfig.directory)
     writer = SummaryWriter(logdir_path)
 
-    train_dataset = PlanetSegmentationDataset.from_config(config.TrainDatasetConfig)
-    val_dataset = PlanetSegmentationDataset.from_config(config.ValidationDatasetConfig)
+    train_dataset = PlanetSegmentationDatasetV2.from_config(config.TrainDatasetConfig)
+    val_dataset = PlanetSegmentationDatasetV2.from_config(config.ValidationDatasetConfig)
 
     train_loader = DataLoader.from_config(train_dataset, config.TrainDataloaderConfig)
     val_loader = DataLoader.from_config(val_dataset, config.ValDataloaderConfig)
@@ -28,7 +26,7 @@ def run_experiment(config):
     criterion = config.ExperimentConfig.criterion
     optimizer = config.ExperimentConfig.optimizer
     metrics = config.ExperimentConfig.metrics
-    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=8, verbose=True, threshold=1e-3)
+    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=5, verbose=True)
 
     # training & validation
     best_iou = 0
@@ -53,5 +51,4 @@ def run_experiment(config):
             torch.save(model, os.path.join(logdir_path, 'best_model.pth'))
             print('Best IoU updated!')
 
-
-run_experiment(experiment_config)
+    print(f"\n{' ' * 10}{'*' * 10} Best IoU: {best_iou} {' ' * 10}{'*' * 10}")

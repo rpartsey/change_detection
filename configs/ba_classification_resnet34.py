@@ -1,18 +1,14 @@
-"""
-Basic example configuration file.
-
-Experiment description ...
-mean=[4693.149574344914, 4083.8567912125004, 3253.389157030059, 4042.120897153529],
-std=[533.0050173177232, 532.784091756862, 574.671063551312, 913.357907430358]
-"""
 import torch
 from torch import nn, optim
 from torchvision import models
 from torch.functional import F
-import segmentation_models_pytorch as smp
 
 import transforms as t
-from augs import SmartCrop, CenterCrop
+from augs import SmartCrop, CenterCrop, SmartCropColorAndScale
+from utils.general import set_random_seed
+
+
+set_random_seed(2412)
 
 
 class BinaryCrossEntropy(nn.Module):
@@ -25,11 +21,15 @@ class BinaryCrossEntropy(nn.Module):
 
         return loss.mean()
 
+
 class ExperimentConfig:
-    directory = 'ba_classification'
-    device = 'cpu'
-    save_each_epoch = False
-    num_epochs = 200
+    # directory = 'vgg16/ba_classification_pretrained_sgd_2.2x10e-4_with_plateau_1e-3'
+    # directory = 'vgg16/ba_classification_pretrained_sgd_2.2x10e-4_with_plateau'
+    directory = 'resnet34/ba_classification_pretrained_adam_10e-4_with_plateau_1e-3_ssr'
+    # directory = 'vgg16/ba_classification_pretrained_adam_5.5x10e-5_with_plateau'
+    device = 'cuda:0'
+    save_each_epoch = True
+    num_epochs = 40
     random_state = 2412
 
     model = models.resnet34(pretrained=True)
@@ -56,7 +56,7 @@ class DatasetConfig:
 
 
 class TrainDatasetConfig(DatasetConfig):
-    augmentations = SmartCrop(256, 256, p=1.0)
+    augmentations = SmartCropColorAndScale(256, 256, p=1.0) #SmartCrop(256, 256, p=1.0)
     image_transforms = t.Compose([
         # t.RGBOnly(),
         t.ChannelsFirst(),
@@ -68,8 +68,8 @@ class TrainDatasetConfig(DatasetConfig):
         #     std=[533.0050173177232, 532.784091756862, 574.671063551312]
         # ),
         t.Normalize(
-            mean=[4693.149574344914, 4083.8567912125004, 3253.389157030059, 4042.120897153529],
-            std=[533.0050173177232, 532.784091756862, 574.671063551312, 913.357907430358]
+            mean=[4417.258621276464, 3835.2537312971936, 3065.427994856266, 3783.5501700000373],
+            std=[805.3352649209319, 752.9507977334065, 769.0657720493105, 1136.0581964787941]
         )
     ])
     csv_path = '/datasets/rpartsey/satellite/planet/smart_crop/train.csv'
@@ -88,8 +88,8 @@ class ValidationDatasetConfig(DatasetConfig):
         #     std=[533.0050173177232, 532.784091756862, 574.671063551312]
         # ),
         t.Normalize(
-            mean=[4693.149574344914, 4083.8567912125004, 3253.389157030059, 4042.120897153529],
-            std=[533.0050173177232, 532.784091756862, 574.671063551312, 913.357907430358]
+            mean=[4417.258621276464, 3835.2537312971936, 3065.427994856266, 3783.5501700000373],
+            std=[805.3352649209319, 752.9507977334065, 769.0657720493105, 1136.0581964787941]
         )
     ])
     csv_path = '/datasets/rpartsey/satellite/planet/smart_crop/val.csv'

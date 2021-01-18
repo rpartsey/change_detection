@@ -23,7 +23,7 @@ def calculate_metrics(model, criterion, loader, metrics, device, threshold=0.5):
                 loss = criterion(outputs, masks)
                 preds = outputs >= threshold  # noqa
 
-            running_loss += loss.item() * images.size(0)
+            running_loss += loss.item()
 
             preds = preds.type(torch.uint8)  # noqa
             masks = masks.type(torch.uint8)
@@ -61,7 +61,7 @@ def train_epoch(model, criterion, optimizer, loader, metrics, device, scheduler=
             if scheduler:
                 scheduler.step()
 
-            batch_loss = loss.item() * images.size(0)
+            batch_loss = loss.item()
             running_loss += batch_loss
 
             preds = (outputs >= threshold).type(torch.uint8)  # noqa
