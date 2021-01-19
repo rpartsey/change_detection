@@ -5,8 +5,8 @@ import os
 import torch
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.tensorboard import SummaryWriter
-import configs.ba_classification_efficientnet as experiment_config
-from datasets.planet import PlanetClassificationDatasetV2, DataLoader
+import config.ba_classification_efficientnet as experiment_config
+from datasets.datasets import PlanetClassificationDatasetV2, DataLoader
 from experiments.binary_classification import train_epoch, calculate_metrics, print_metrics, write_metrics
 from utils.general import create_experiment_log_dir
 

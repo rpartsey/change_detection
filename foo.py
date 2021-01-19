@@ -4,7 +4,7 @@ import torch
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.tensorboard import SummaryWriter
 
-from datasets.planet import PlanetSegmentationDatasetV2, DataLoader
+from datasets.datasets import PlanetSegmentationDatasetV2, DataLoader
 from experiments.binary_segmentation import train_epoch, print_metrics, write_metrics, calculate_metrics
 from utils.general import create_experiment_log_dir
 

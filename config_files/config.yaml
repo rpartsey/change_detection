@@ -1,0 +1,115 @@
+experiment_name: smoke
+log_dir: ./experiments
+epochs: 30
+device: cuda:0
+seed: 1
+
+train:
+  dataset:
+    type: PlanetSegmentationDataset
+    params:
+      csv_path: /datasets/rpartsey/satellite/planet/planet_dataset/train-val/random_split/train.csv
+      transforms:
+        image:
+          ChannelsFirst:
+            params:
+          ToNumpyInt32:
+            params:
+          FromNumpy:
+            params:
+          ToTorchFloat:
+            params:
+          Normalize:
+            params:
+              mean: [4417.258621276464, 3835.2537312971936, 3065.427994856266, 3783.5501700000373]
+              std: [805.3352649209319, 752.9507977334065, 769.0657720493105, 1136.0581964787941]
+        target:
+      augmentations:
+        SmartCrop:
+          params:
+            height: 256
+            width: 256
+            p: 1.0
+  loader:
+    type: TrainDataloader
+    params:
+      batch_size: 8
+      num_workers: 4
+      shuffle: True
+      sampler: null
+
+val:
+  dataset:
+    type: PlanetSegmentationDataset
+    params:
+      csv_path: /datasets/rpartsey/satellite/planet/planet_dataset/train-val/random_split/val.csv
+    transforms:
+      image:
+        ChannelsFirst:
+          params:
+        ToNumpyInt32:
+          params:
+        FromNumpy:
+          params:
+        ToTorchFloat:
+          params:
+        Normalize:
+          params:
+            mean: [ 4417.258621276464, 3835.2537312971936, 3065.427994856266, 3783.5501700000373 ]
+            std: [ 805.3352649209319, 752.9507977334065, 769.0657720493105, 1136.0581964787941 ]
+      target:
+      augmentations:
+        CenterCrop:
+          params:
+            height: 256
+            width: 256
+            p: 1.0
+  loader:
+    type: ValDataloader
+    params:
+      batch_size: 8
+      num_workers: 4
+      shuffle: False
+      sampler: null
+
+model:
+  type: Unet
+  params:
+    encoder_name: resnet34
+    encoder_weights: imagenet
+    in_channels: 4
+    classes: 1
+    activation: sigmoid
+
+#model:
+#  type: VONet
+#  save: True
+#  params:
+#    encoder:
+#      type: resnet18
+#      params:
+#        depth: 5
+#        weights: null
+#        in_channels: 8
+#        in_height: 360
+#        in_width: 640
+#    fc:
+#      params:
+#        hidden_size: [512, 512]
+#        output_size: 4
+#        p_dropout: 0
+
+loss:
+  type: PoseLoss
+  params:
+    alpha: 1.
+    beta: 10.
+
+optim:
+  type: Adam
+  params:
+    lr: 0.0001
+
+stopper:
+  params:
+    patience: 12

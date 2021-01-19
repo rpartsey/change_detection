@@ -8,15 +8,15 @@ from utils.image import read_tif
 class PlanetClassificationDataset(Dataset):
     """Planet classification dataset."""
 
-    def __init__(self, csv_file, **kwargs):
+    def __init__(self, csv_file, image_transforms, target_transforms, augmentations):
         """
         Args:
             csv_file (string): Path to the csv file with data locations.
         """
         self.df = pd.read_csv(csv_file)
-        self.image_transforms = kwargs.get('image_transforms')
-        self.label_transforms = kwargs.get('label_transforms')
-        self.augmentations = kwargs.get('augmentations')
+        self.image_transforms = image_transforms
+        self.label_transforms = target_transforms
+        self.augmentations = augmentations
 
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
@@ -42,12 +42,12 @@ class PlanetClassificationDataset(Dataset):
         return len(self.df)
 
     @classmethod
-    def from_config(cls, config):
+    def from_config(cls, dataset_params, image_transforms, target_transforms, augmentations):
         return cls(
-            csv_file=config.csv_path,
-            image_transforms=config.image_transforms,
-            label_transforms=config.label_transforms,
-            augmentations=config.augmentations
+            csv_file=dataset_params.csv_path,
+            image_transforms=image_transforms,
+            target_transforms=target_transforms,
+            augmentations=augmentations
         )
 
 
@@ -86,15 +86,15 @@ class PlanetSegmentationDataset(Dataset):
     IMAGE_LOCATION_KEY = 'image_path'
     MASK_LOCATION_KEY = 'mask_path'
 
-    def __init__(self, csv_file, **kwargs):
+    def __init__(self, csv_file, image_transforms, target_transforms, augmentations):
         """
         Args:
             csv_file (string): Path to the csv file with data locations.
         """
         self.df = pd.read_csv(csv_file)
-        self.image_transforms = kwargs.get('image_transforms')
-        self.mask_transforms = kwargs.get('mask_transforms')
-        self.augmentations = kwargs.get('augmentations')
+        self.image_transforms = image_transforms
+        self.mask_transforms = target_transforms
+        self.augmentations = augmentations
 
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
@@ -125,12 +125,12 @@ class PlanetSegmentationDataset(Dataset):
         return read_tif(row[self.MASK_LOCATION_KEY])
 
     @classmethod
-    def from_config(cls, config):
+    def from_config(cls, config, image_transforms, target_transforms, augmentations):
         return cls(
-            csv_file=config.csv_path,
-            image_transforms=config.image_transforms,
-            mask_transforms=config.mask_transforms,
-            augmentations=config.augmentations
+            csv_file=config.params.csv_path,
+            image_transforms=image_transforms,
+            target_transforms=target_transforms,
+            augmentations=augmentations
         )
 
 
