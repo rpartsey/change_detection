@@ -34,9 +34,7 @@ class PlanetClassificationDataset(Dataset):
         if self.label_transforms:
             label = self.label_transforms(label)
 
-        meta = {}  # meta data
-
-        return image, label, meta
+        return image, label
 
     def __len__(self):
         return len(self.df)
@@ -74,11 +72,7 @@ class PlanetClassificationDatasetV2(PlanetClassificationDataset):
         if self.label_transforms:
             label = self.label_transforms(label)
 
-        meta = {
-            'image_path': image_path
-        }  # meta data
-
-        return image, label, meta
+        return image, label
 
 
 class PlanetSegmentationDataset(Dataset):

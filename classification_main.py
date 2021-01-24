@@ -10,7 +10,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from config import get_config
-from metrics import make_metrics, AverageMetricsMeter
+from metrics import make_metrics, BinaryClassificationMeter
 from utils.early_stopping import EarlyStopping
 
 from models import make_model
@@ -28,6 +28,7 @@ def set_random_seed(seed):
 
 def print_metrics(phase, metrics):
     loss = metrics.pop('loss')
+    conf_mat = metrics.pop('conf_mat')
 
     loss_log_str = '{:6}loss: {:.6f}'.format(phase, loss)
     other_metrics_log_str = ' '.join([
@@ -36,12 +37,16 @@ def print_metrics(phase, metrics):
     ])
 
     metrics['loss'] = loss
-    print(f'{loss_log_str} {other_metrics_log_str}')
+    metrics['conf_mat'] = conf_mat
+    print(f'{loss_log_str} {other_metrics_log_str}\n{conf_mat}')
 
 
 def write_metrics(epoch, metrics, writer):
+    conf_mat = metrics.pop('conf_mat')
     for k, v in metrics.items():
         writer.add_scalar(f'metrics/{k}', v, epoch)
+
+    metrics['conf_mat'] = conf_mat
 
 
 def init_experiment(config):
@@ -49,7 +54,7 @@ def init_experiment(config):
         def ask():
             return input(f'Experiment "{config.experiment_name}" already exists. Delete (y/n)?')
 
-        answer = ask()
+        answer = 'y'  # ask()
         while answer not in ('y', 'n'):
             answer = ask()
 
@@ -64,10 +69,10 @@ def init_experiment(config):
         config.dump(stream=dest_file)
 
 
-def train(model, optimizer, train_loader, loss_f, metric_fns, device):
+def train(model, optimizer, train_loader, loss_f, device, threshold=0.5):
     model.train()
 
-    meter = AverageMetricsMeter(metric_fns, device)
+    meter = BinaryClassificationMeter(device)
     metrics = defaultdict(lambda: 0)
 
     for data, target in tqdm(train_loader):
@@ -83,6 +88,9 @@ def train(model, optimizer, train_loader, loss_f, metric_fns, device):
 
         batch_size = target.shape[0]
         metrics['loss'] += loss.item() * batch_size
+
+        output = (output >= threshold).type(torch.uint8)
+        target = target.type(torch.uint8)
         meter.update(target, output)
 
     dataset_length = len(train_loader.dataset)
@@ -92,10 +100,10 @@ def train(model, optimizer, train_loader, loss_f, metric_fns, device):
     return metrics
 
 
-def val(model, val_loader, loss_f, metric_fns, device):
+def val(model, val_loader, loss_f, device, threshold=0.5):
     model.eval()
 
-    meter = AverageMetricsMeter(metric_fns, device)
+    meter = BinaryClassificationMeter(device)
     metrics = defaultdict(lambda: 0)
 
     with torch.no_grad():
@@ -108,6 +116,9 @@ def val(model, val_loader, loss_f, metric_fns, device):
 
             batch_size = target.shape[0]
             metrics['loss'] += loss.item() * batch_size
+
+            output = (output >= threshold).type(torch.uint8)
+            target = target.type(torch.uint8)
             meter.update(target, output)
 
     dataset_length = len(val_loader.dataset)
@@ -141,7 +152,7 @@ def main():
     config.tb_dir = os.path.join(config.experiment_dir, 'tb')
     config.model.best_checkpoint_path = os.path.join(config.experiment_dir, 'best_checkpoint.pt')
     config.model.last_checkpoint_path = os.path.join(config.experiment_dir, 'last_checkpoint.pt')
-    config.config_save_path = os.path.join(config.experiment_dir, 'config.yaml')
+    config.config_save_path = os.path.join(config.experiment_dir, 'segmentation_config.yaml')
     config.freeze()
 
     init_experiment(config)
@@ -160,7 +171,6 @@ def main():
     scheduler = None
 
     loss_f = make_loss(config.loss)
-    metrics = make_metrics(config.metrics)
 
     early_stopping = EarlyStopping(
         **config.stopper.params
@@ -171,11 +181,11 @@ def main():
 
     for epoch in range(1, config.epochs + 1):
         print(f'Epoch {epoch}')
-        train_metrics = train(model, optimizer, train_loader, loss_f, metrics, device)
+        train_metrics = train(model, optimizer, train_loader, loss_f, device)
         write_metrics(epoch, train_metrics, train_writer)
         print_metrics('Train', train_metrics)
 
-        val_metrics = val(model, val_loader, loss_f, metrics, device)
+        val_metrics = val(model, val_loader, loss_f, device)
         write_metrics(epoch, val_metrics, val_writer)
         print_metrics('Val', val_metrics)
 

@@ -26,11 +26,11 @@ class BinaryClassificationMeter:
         f1 = 2 * (precision * recall) / (precision + recall)
 
         metrics = {
-            'conf_mat': self.conf_mat,
-            'accuracy': accuracy,
-            'precision': precision,
-            'recall': recall,
-            'f1': f1
+            'conf_mat': self.conf_mat.cpu().numpy(),
+            'accuracy': accuracy.cpu().numpy().item(),
+            'precision': precision.cpu().numpy().item(),
+            'recall': recall.cpu().numpy().item(),
+            'f1': f1.cpu().numpy().item()
         }
 
         return metrics

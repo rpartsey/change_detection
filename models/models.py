@@ -53,7 +53,8 @@ class BADetectionNet(nn.Module):
             nn.Flatten(),
             *layers,
             nn.Dropout(p_dropout),
-            nn.Linear(hidden_size[-1], output_size)
+            nn.Linear(hidden_size[-1], output_size),
+            nn.Sigmoid()
         )
 
     @staticmethod

@@ -1,4 +1,4 @@
-experiment_name: smoke
+experiment_name: segmentation
 log_dir: ./experiments
 epochs: 30
 device: cuda:0
@@ -12,25 +12,32 @@ train:
       transforms:
         image:
           ChannelsFirst:
-            params:
+            params: null
           ToNumpyInt32:
-            params:
+            params: null
           FromNumpy:
-            params:
+            params: null
           ToTorchFloat:
-            params:
+            params: null
           Normalize:
             params:
-              mean: [4417.258621276464, 3835.2537312971936, 3065.427994856266, 3783.5501700000373]
-              std: [805.3352649209319, 752.9507977334065, 769.0657720493105, 1136.0581964787941]
+              mean:
+                - 4417.258621276464
+                - 3835.2537312971936
+                - 3065.427994856266
+                - 3783.5501700000373
+              std:
+                - 805.3352649209319
+                - 752.9507977334065
+                - 769.0657720493105
+                - 1136.0581964787941
         target:
           ChannelsFirst:
-            params:
+            params: null
           FromNumpy:
-            params:
+            params: null
           ToTorchFloat:
-            params:
-
+            params: null
       augmentations:
         type: SmartCrop
         params:
@@ -53,24 +60,32 @@ val:
       transforms:
         image:
           ChannelsFirst:
-            params:
+            params: null
           ToNumpyInt32:
-            params:
+            params: null
           FromNumpy:
-            params:
+            params: null
           ToTorchFloat:
-            params:
+            params: null
           Normalize:
             params:
-              mean: [ 4417.258621276464, 3835.2537312971936, 3065.427994856266, 3783.5501700000373 ]
-              std: [ 805.3352649209319, 752.9507977334065, 769.0657720493105, 1136.0581964787941 ]
+              mean:
+                - 4417.258621276464
+                - 3835.2537312971936
+                - 3065.427994856266
+                - 3783.5501700000373
+              std:
+                - 805.3352649209319
+                - 752.9507977334065
+                - 769.0657720493105
+                - 1136.0581964787941
         target:
           ChannelsFirst:
-            params:
+            params: null
           FromNumpy:
-            params:
+            params: null
           ToTorchFloat:
-            params:
+            params: null
       augmentations:
         type: CenterCrop
         params:
@@ -94,24 +109,6 @@ model:
     in_channels: 4
     classes: 1
     activation: sigmoid
-
-#model:
-#  type: VONet
-#  save: True
-#  params:
-#    encoder:
-#      type: resnet18
-#      params:
-#        depth: 5
-#        weights: null
-#        in_channels: 8
-#        in_height: 360
-#        in_width: 640
-#    fc:
-#      params:
-#        hidden_size: [512, 512]
-#        output_size: 4
-#        p_dropout: 0
 
 loss:
   type: BCELoss

@@ -3,7 +3,11 @@ from . import models
 
 
 def make_model(config):
-    model_init = getattr(smp, config.type, None) or getattr(models, config.type, None)
-    model = model_init(**config.params)
+    try:
+        model_init = getattr(smp, config.type)
+        model = model_init(**config.params)
+    except AttributeError:
+        model_init = getattr(models, config.type)
+        model = model_init.from_config(config)
 
     return model
