@@ -40,7 +40,7 @@ def make_dataset(config):
 def make_data_loader(config, dataset):
     data_loader_init = getattr(datasets, config.type)
     loader = data_loader_init.from_config(
-        config,
+        config.params,
         dataset
     )
 

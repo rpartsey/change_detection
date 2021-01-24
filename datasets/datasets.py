@@ -113,7 +113,7 @@ class PlanetSegmentationDataset(Dataset):
 
         meta = {}  # meta data
 
-        return image, mask#, meta
+        return image, mask #, meta
 
     def __len__(self):
         return len(self.df)
@@ -127,7 +127,7 @@ class PlanetSegmentationDataset(Dataset):
     @classmethod
     def from_config(cls, config, image_transforms, target_transforms, augmentations):
         return cls(
-            csv_file=config.params.csv_path,
+            csv_file=config.csv_path,
             image_transforms=image_transforms,
             target_transforms=target_transforms,
             augmentations=augmentations
@@ -153,7 +153,7 @@ class PlanetClassificationTestDataset:
 
 class DataLoader(TorchDataLoader):
     @classmethod
-    def from_config(cls, dataset, config):
+    def from_config(cls, config, dataset):
         return cls(
             dataset=dataset,
             batch_size=config.batch_size,

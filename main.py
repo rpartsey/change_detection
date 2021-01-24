@@ -10,6 +10,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from config import get_config
+from metrics import make_metrics, AverageMetricsMeter
 from utils.early_stopping import EarlyStopping
 
 from models import make_model
@@ -59,21 +60,22 @@ def init_experiment(config):
         shutil.rmtree(config.experiment_dir)
 
     os.makedirs(config.experiment_dir)
-    shutil.copy(config.self_path, config.config_save_path)
+    with open(config.config_save_path, 'w') as dest_file:
+        config.dump(stream=dest_file)
 
 
-def train(model, optimizer, train_loader, loss_f, device):
+def train(model, optimizer, train_loader, loss_f, metric_fns, device):
     model.train()
 
+    meter = AverageMetricsMeter(metric_fns, device)
     metrics = defaultdict(lambda: 0)
 
-    for data in tqdm(train_loader):
-        data, target = transform_batch(data)
+    for data, target in tqdm(train_loader):
         data = data.to(device).float()
         target = target.to(device).float()
 
         output = model(data)
-        loss, loss_components = loss_f(output, target)
+        loss = loss_f(output, target)
 
         optimizer.zero_grad()
         loss.backward()
@@ -81,103 +83,47 @@ def train(model, optimizer, train_loader, loss_f, device):
 
         batch_size = target.shape[0]
         metrics['loss'] += loss.item() * batch_size
-        for loss_component, value in loss_components.items():
-            metrics[loss_component] += value.item() * batch_size
+        meter.update(target, output)
 
     dataset_length = len(train_loader.dataset)
-    for metric_name in metrics:
-        metrics[metric_name] /= dataset_length
+    metrics['loss'] /= dataset_length
+    metrics.update(meter.get_metrics())
 
     return metrics
 
 
-def val(model, val_loader, loss_f, device):
+def val(model, val_loader, loss_f, metric_fns, device):
     model.eval()
 
+    meter = AverageMetricsMeter(metric_fns, device)
     metrics = defaultdict(lambda: 0)
 
     with torch.no_grad():
-        for data in tqdm(val_loader):
-            data, target = transform_batch(data)
+        for data, target in tqdm(val_loader):
             data = data.to(device).float()
             target = target.to(device).float()
 
             output = model(data)
-            loss, loss_components = loss_f(output, target)
+            loss = loss_f(output, target)
 
             batch_size = target.shape[0]
             metrics['loss'] += loss.item() * batch_size
-            for loss_component, value in loss_components.items():
-                metrics[loss_component] += value.item() * batch_size
+            meter.update(target, output)
 
     dataset_length = len(val_loader.dataset)
-    for metric_name in metrics:
-        metrics[metric_name] /= dataset_length
+    metrics['loss'] /= dataset_length
+    metrics.update(meter.get_metrics())
 
     return metrics
-
-
-def transform_batch(batch):
-    source_input, target_input = [], []
-
-    source_images = batch['source_rgb']
-    target_images = batch['target_rgb']
-    source_input += [source_images]
-    target_input += [target_images]
-
-    source_depth_maps = batch['source_depth']
-    target_depth_maps = batch['target_depth']
-    source_input += [source_depth_maps]
-    target_input += [target_depth_maps]
-
-    if all(key in batch for key in ['source_depth_discretized', 'target_depth_discretized']):
-        source_d_depth = batch['source_depth_discretized']
-        target_d_depth = batch['target_depth_discretized']
-        source_input += [source_d_depth]
-        target_input += [target_d_depth]
-
-    concat_source_input = torch.cat(source_input, 1)
-    concat_target_input = torch.cat(target_input, 1)
-    transformed_batch = torch.cat(
-        [
-            concat_source_input,
-            concat_target_input
-        ],
-        1
-    )
-
-    translation = batch['egomotion']['translation']
-    rotation = batch['egomotion']['rotation'].view(translation.shape[0], -1)
-    target = torch.cat(
-        [
-            translation,
-            rotation
-        ],
-        1
-    )
-
-    return transformed_batch, target
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--config-file',
+        '--config-file-path',
         required=True,
         type=str,
         help='path to the configuration file'
-    )
-    parser.add_argument(
-        '--num-dataset-items',
-        required=False,
-        type=int,
-        default=None,
-        help='number of items to form a dataset'
-    )
-    parser.add_argument(
-        '--invert-rotations',
-        action='store_true',
-        help='indicates whether to invert rotation actions'
     )
     args = parser.parse_args()
 
@@ -186,7 +132,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    config_path = args.config_file
+    config_path = args.config_file_path
 
     config = get_config(config_path, new_keys_allowed=True)
 
@@ -196,13 +142,6 @@ def main():
     config.model.best_checkpoint_path = os.path.join(config.experiment_dir, 'best_checkpoint.pt')
     config.model.last_checkpoint_path = os.path.join(config.experiment_dir, 'last_checkpoint.pt')
     config.config_save_path = os.path.join(config.experiment_dir, 'config.yaml')
-    config.self_path = config_path
-    config.train.dataset.params.data_root = config.data_root
-    config.train.dataset.params.num_points = args.num_dataset_items
-    config.train.dataset.params.invert_rotations = args.invert_rotations
-    config.val.dataset.params.data_root = config.data_root
-    config.val.dataset.params.num_points = args.num_dataset_items
-    config.val.dataset.params.invert_rotations = args.invert_rotations
     config.freeze()
 
     init_experiment(config)
@@ -221,6 +160,7 @@ def main():
     scheduler = None
 
     loss_f = make_loss(config.loss)
+    metrics = make_metrics(config.metrics)
 
     early_stopping = EarlyStopping(
         **config.stopper.params
@@ -231,11 +171,11 @@ def main():
 
     for epoch in range(1, config.epochs + 1):
         print(f'Epoch {epoch}')
-        train_metrics = train(model, optimizer, train_loader, loss_f, device)
+        train_metrics = train(model, optimizer, train_loader, loss_f, metrics, device)
         write_metrics(epoch, train_metrics, train_writer)
         print_metrics('Train', train_metrics)
 
-        val_metrics = val(model, val_loader, loss_f, device)
+        val_metrics = val(model, val_loader, loss_f, metrics, device)
         write_metrics(epoch, val_metrics, val_writer)
         print_metrics('Val', val_metrics)
 

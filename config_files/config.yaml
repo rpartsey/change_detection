@@ -24,17 +24,24 @@ train:
               mean: [4417.258621276464, 3835.2537312971936, 3065.427994856266, 3783.5501700000373]
               std: [805.3352649209319, 752.9507977334065, 769.0657720493105, 1136.0581964787941]
         target:
+          ChannelsFirst:
+            params:
+          FromNumpy:
+            params:
+          ToTorchFloat:
+            params:
+
       augmentations:
-        SmartCrop:
-          params:
-            height: 256
-            width: 256
-            p: 1.0
+        type: SmartCrop
+        params:
+          height: 256
+          width: 256
+          p: 1.0
   loader:
-    type: TrainDataloader
+    type: DataLoader
     params:
       batch_size: 8
-      num_workers: 4
+      num_workers: 2
       shuffle: True
       sampler: null
 
@@ -43,37 +50,44 @@ val:
     type: PlanetSegmentationDataset
     params:
       csv_path: /datasets/rpartsey/satellite/planet/planet_dataset/train-val/random_split/val.csv
-    transforms:
-      image:
-        ChannelsFirst:
-          params:
-        ToNumpyInt32:
-          params:
-        FromNumpy:
-          params:
-        ToTorchFloat:
-          params:
-        Normalize:
-          params:
-            mean: [ 4417.258621276464, 3835.2537312971936, 3065.427994856266, 3783.5501700000373 ]
-            std: [ 805.3352649209319, 752.9507977334065, 769.0657720493105, 1136.0581964787941 ]
-      target:
+      transforms:
+        image:
+          ChannelsFirst:
+            params:
+          ToNumpyInt32:
+            params:
+          FromNumpy:
+            params:
+          ToTorchFloat:
+            params:
+          Normalize:
+            params:
+              mean: [ 4417.258621276464, 3835.2537312971936, 3065.427994856266, 3783.5501700000373 ]
+              std: [ 805.3352649209319, 752.9507977334065, 769.0657720493105, 1136.0581964787941 ]
+        target:
+          ChannelsFirst:
+            params:
+          FromNumpy:
+            params:
+          ToTorchFloat:
+            params:
       augmentations:
-        CenterCrop:
-          params:
-            height: 256
-            width: 256
-            p: 1.0
+        type: CenterCrop
+        params:
+          height: 256
+          width: 256
+          p: 1.0
   loader:
-    type: ValDataloader
+    type: DataLoader
     params:
       batch_size: 8
-      num_workers: 4
+      num_workers: 2
       shuffle: False
       sampler: null
 
 model:
   type: Unet
+  save: True
   params:
     encoder_name: resnet34
     encoder_weights: imagenet
@@ -100,10 +114,13 @@ model:
 #        p_dropout: 0
 
 loss:
-  type: PoseLoss
-  params:
-    alpha: 1.
-    beta: 10.
+  type: BCELoss
+  params: null
+
+metrics:
+  IoU:
+    params:
+      threshold: 0.5
 
 optim:
   type: Adam
