@@ -10,7 +10,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from config import get_config
-from metrics import make_metrics, BinaryClassificationMeter
+from metrics import BinaryClassificationMeter
 from utils.early_stopping import EarlyStopping
 
 from models import make_model
@@ -38,7 +38,7 @@ def print_metrics(phase, metrics):
 
     metrics['loss'] = loss
     metrics['conf_mat'] = conf_mat
-    print(f'{loss_log_str} {other_metrics_log_str}\n{conf_mat}')
+    print(f'{loss_log_str} {other_metrics_log_str}\nConfusion matrix:\n{conf_mat}')
 
 
 def write_metrics(epoch, metrics, writer):
@@ -54,7 +54,7 @@ def init_experiment(config):
         def ask():
             return input(f'Experiment "{config.experiment_name}" already exists. Delete (y/n)?')
 
-        answer = 'y'  # ask()
+        answer = ask()
         while answer not in ('y', 'n'):
             answer = ask()
 
